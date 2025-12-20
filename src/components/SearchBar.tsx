@@ -1,0 +1,167 @@
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Plane, MapPin, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { flights, searchFlights, Flight } from '@/data/flights';
+import { airports, Airport } from '@/data/airports';
+import { cn } from '@/lib/utils';
+
+interface SearchBarProps {
+  onFlightSelect: (flight: Flight) => void;
+  onAirportSelect: (airport: Airport) => void;
+}
+
+export const SearchBar = ({ onFlightSelect, onAirportSelect }: SearchBarProps) => {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [results, setResults] = useState<{ flights: Flight[]; airports: Airport[] }>({
+    flights: [],
+    airports: []
+  });
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (query.length >= 2) {
+      const matchedFlights = searchFlights(query).slice(0, 5);
+      const q = query.toLowerCase();
+      const matchedAirports = airports.filter(
+        a => a.code.toLowerCase().includes(q) || 
+             a.city.toLowerCase().includes(q) ||
+             a.name.toLowerCase().includes(q)
+      ).slice(0, 5);
+      
+      setResults({ flights: matchedFlights, airports: matchedAirports });
+      setIsOpen(true);
+    } else {
+      setResults({ flights: [], airports: [] });
+      setIsOpen(false);
+    }
+  }, [query]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleFlightClick = (flight: Flight) => {
+    onFlightSelect(flight);
+    setQuery('');
+    setIsOpen(false);
+  };
+
+  const handleAirportClick = (airport: Airport) => {
+    onAirportSelect(airport);
+    setQuery('');
+    setIsOpen(false);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'On Time': return 'text-success';
+      case 'Delayed': return 'text-warning';
+      case 'In Air': return 'text-primary';
+      case 'Landed': return 'text-muted-foreground';
+      case 'Boarding': return 'text-accent';
+      default: return 'text-muted-foreground';
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative w-full max-w-md">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          type="text"
+          placeholder="Search flights, airports, cities..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="pl-10 pr-10 bg-muted/50 border-border/50 focus:border-primary/50 focus:ring-primary/20"
+        />
+        {query && (
+          <button
+            onClick={() => { setQuery(''); setIsOpen(false); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (results.flights.length > 0 || results.airports.length > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 right-0 mt-2 glass-strong rounded-lg border border-border/50 shadow-elevated overflow-hidden z-50"
+          >
+            {/* Flights */}
+            {results.flights.length > 0 && (
+              <div className="p-2">
+                <p className="text-xs text-muted-foreground px-2 py-1 uppercase tracking-wider">Flights</p>
+                {results.flights.map((flight) => (
+                  <button
+                    key={flight.id}
+                    onClick={() => handleFlightClick(flight)}
+                    className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Plane className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-semibold text-sm">{flight.flightNumber}</span>
+                        <span className={cn("text-xs", getStatusColor(flight.status))}>{flight.status}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {flight.origin} → {flight.destination} • {flight.airline}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Divider */}
+            {results.flights.length > 0 && results.airports.length > 0 && (
+              <div className="border-t border-border/50" />
+            )}
+
+            {/* Airports */}
+            {results.airports.length > 0 && (
+              <div className="p-2">
+                <p className="text-xs text-muted-foreground px-2 py-1 uppercase tracking-wider">Airports</p>
+                {results.airports.map((airport) => (
+                  <button
+                    key={airport.code}
+                    onClick={() => handleAirportClick(airport)}
+                    className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-accent" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-semibold text-sm">{airport.code}</span>
+                        <span className="text-xs text-muted-foreground">{airport.city}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{airport.name}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
