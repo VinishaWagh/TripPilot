@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plane, MapPin, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { flights, searchFlights, Flight } from '@/data/flights';
+import { Flight } from '@/data/flights';
 import { airports, Airport } from '@/data/airports';
+import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 interface SearchBarProps {
@@ -23,16 +24,19 @@ export const SearchBar = ({ onFlightSelect, onAirportSelect }: SearchBarProps) =
 
   useEffect(() => {
     if (query.length >= 2) {
-      const matchedFlights = searchFlights(query).slice(0, 5);
-      const q = query.toLowerCase();
-      const matchedAirports = airports.filter(
-        a => a.code.toLowerCase().includes(q) || 
-             a.city.toLowerCase().includes(q) ||
-             a.name.toLowerCase().includes(q)
-      ).slice(0, 5);
-      
-      setResults({ flights: matchedFlights, airports: matchedAirports });
-      setIsOpen(true);
+      const matchedFlights = api.searchFlight(query).then((arr) => arr.slice(0, 5)).catch(() => []);
+      // update results asynchronously
+      (async () => {
+        const flightsArr = await api.searchFlight(query).catch(() => []);
+        const q = query.toLowerCase();
+        const matchedAirports = airports.filter(
+          a => a.code.toLowerCase().includes(q) || 
+               a.city.toLowerCase().includes(q) ||
+               a.name.toLowerCase().includes(q)
+        ).slice(0, 5);
+        setResults({ flights: flightsArr.slice(0,5), airports: matchedAirports });
+        setIsOpen(true);
+      })();
     } else {
       setResults({ flights: [], airports: [] });
       setIsOpen(false);
@@ -53,6 +57,44 @@ export const SearchBar = ({ onFlightSelect, onAirportSelect }: SearchBarProps) =
     onFlightSelect(flight);
     setQuery('');
     setIsOpen(false);
+  };
+
+  const saveSearch = async (queryStr: string, flight?: Flight) => {
+    try {
+      const mod = await import('@/lib/storage');
+      // try firebase first
+      try {
+        const fb = await import('@/lib/firebase');
+        const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+        const user = fb.auth?.currentUser;
+        if (user) {
+          await addDoc(collection(fb.db, 'users', user.uid, 'searches'), {
+            query: queryStr,
+            flightId: flight?.id || null,
+            createdAt: serverTimestamp(),
+          });
+          return;
+        }
+      } catch (e) {
+        // ignore and fallback to local
+      }
+
+      mod.saveQueryLocal(queryStr);
+    } catch (err) {
+      console.warn('Failed to persist search', err);
+    }
+  };
+
+  const performSearch = async (q: string) => {
+    const found = await api.getFlightByCodeOrNumber(q).catch(() => null);
+    if (found) {
+      onFlightSelect(found);
+      await saveSearch(q, found);
+      setQuery('');
+      setIsOpen(false);
+    } else {
+      // if nothing found, keep suggestions open (handled by results)
+    }
   };
 
   const handleAirportClick = (airport: Airport) => {
@@ -82,6 +124,12 @@ export const SearchBar = ({ onFlightSelect, onAirportSelect }: SearchBarProps) =
           placeholder="Search flights, airports, cities..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={async (e) => {
+            if (e.key === 'Enter' && query.trim()) {
+              e.preventDefault();
+              await performSearch(query.trim());
+            }
+          }}
           className="pl-10 pr-10 bg-muted/50 border-border/50 focus:border-primary/50 focus:ring-primary/20"
         />
         {query && (

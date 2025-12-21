@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { findResponse } from '@/data/chatResponses';
 import { cn } from '@/lib/utils';
+import { auth, db } from '@/lib/firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface Message {
   id: string;
@@ -54,6 +57,27 @@ export const AIChatbot = () => {
 
     // Simulate AI response delay
     await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 700));
+    // Save user's query to Firestore if logged in, otherwise fallback to local storage
+    try {
+      const user = auth?.currentUser;
+      if (user) {
+        await addDoc(collection(db, 'users', user.uid, 'queries'), {
+          query: input,
+          createdAt: serverTimestamp(),
+        });
+      } else {
+        // fallback
+        const { saveQueryLocal } = await import('@/lib/storage');
+        saveQueryLocal(input);
+      }
+    } catch (err) {
+      try {
+        const { saveQueryLocal } = await import('@/lib/storage');
+        saveQueryLocal(input);
+      } catch (e) {
+        console.warn('Failed to save query (both Firestore and local)', e);
+      }
+    }
 
     const response = findResponse(input);
     

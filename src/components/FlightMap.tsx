@@ -33,6 +33,8 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const animatedMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const animFrameRef = useRef<number | null>(null);
 
   const inAirFlights = useMemo(() => flights.filter(f => f.status === 'In Air'), []);
 
@@ -151,6 +153,72 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode 
       markersRef.current.push(marker);
     });
   }, [inAirFlights, onFlightSelect]);
+
+  // Animate a selected flight smoothly from its current position toward destination
+  useEffect(() => {
+    if (!map.current) return;
+
+    // cleanup previous animated marker & animation
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (animatedMarkerRef.current) {
+      try { animatedMarkerRef.current.remove(); } catch (e) {}
+      animatedMarkerRef.current = null;
+    }
+
+    if (!selectedFlight || selectedFlight.status !== 'In Air') return;
+
+    const destination = getAirportByCode(selectedFlight.destination);
+    if (!destination) return;
+
+    const start = { lat: selectedFlight.currentLat, lng: selectedFlight.currentLng };
+    const end = { lat: destination.lat, lng: destination.lng };
+
+    const el = document.createElement('div');
+    el.className = 'animated-flight-marker';
+    el.innerHTML = `
+      <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="#3b82f6" style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.45));">
+          <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+        </svg>
+      </div>
+    `;
+
+    const marker = new maplibregl.Marker({ element: el })
+      .setLngLat([start.lng, start.lat])
+      .addTo(map.current!);
+    animatedMarkerRef.current = marker;
+
+    const duration = 6000; // ms for the animation
+    let startTime: number | null = null;
+
+    const step = (ts: number) => {
+      if (!startTime) startTime = ts;
+      const elapsed = ts - startTime;
+      const t = Math.min(1, elapsed / duration);
+      const curLat = start.lat + (end.lat - start.lat) * t;
+      const curLng = start.lng + (end.lng - start.lng) * t;
+      marker.setLngLat([curLng, curLat]);
+
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(step);
+      } else {
+        animFrameRef.current = null;
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(step);
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (animatedMarkerRef.current) {
+        try { animatedMarkerRef.current.remove(); } catch (e) {}
+        animatedMarkerRef.current = null;
+      }
+    };
+  }, [selectedFlight]);
 
   // Fly to selected flight or airport
   useEffect(() => {
