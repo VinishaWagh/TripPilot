@@ -14,10 +14,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        // preserve existing families and add display from the user's config
+        // preserve existing families and set display to Orbitron for headings
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
-        display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        display: ['Orbitron', 'system-ui', 'sans-serif'],
       },
       colors: {
         // preserved existing tokens

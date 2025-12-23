@@ -4,9 +4,11 @@ import { FadeIn } from '@/components/effects/FadeIn';
 import { Button } from '@/components/ui/button';
 import { Plane, Sparkles, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
 export const Hero = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Aurora Background */}
@@ -65,13 +67,20 @@ export const Hero = () => {
 
         <FadeIn delay={800}>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button
-              size="lg"
-              className="group relative px-8 py-6 text-lg font-semibold bg-primary hover:bg-primary/90 glow-primary transition-all duration-300"
-            >
-              <span>Get Started</span>
-              <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
-            </Button>
+              <Button
+                size="lg"
+                className="group relative px-8 py-6 text-lg font-semibold bg-primary hover:bg-primary/90 glow-primary transition-all duration-300"
+                onClick={() => {
+                  if (isAuthenticated) {
+                    navigate('/map');
+                  } else {
+                    navigate('/signup');
+                  }
+                }}
+              >
+                <span>Get Started</span>
+                <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </Button>
             <Button
               variant="outline"
               size="lg"
