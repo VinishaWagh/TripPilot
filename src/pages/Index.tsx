@@ -213,7 +213,7 @@ const Index = () => {
         )}
       </AnimatePresence>
 
-      <AIChatbot />
+      <AIChatbot selectedContext={selectedFlight} />
     </div>
   );
 };

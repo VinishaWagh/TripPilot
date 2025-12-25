@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Bot, User, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { findResponse } from '@/data/chatResponses';
 import { cn } from '@/lib/utils';
 import { auth, db } from '@/lib/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+
+// 1. Import Flight Interface (Matches your Index.tsx)
+import { Flight } from '@/data/flights';
 
 interface Message {
   id: string;
@@ -16,13 +17,18 @@ interface Message {
   timestamp: Date;
 }
 
-export const AIChatbot = () => {
+// 2. Define Props Interface
+interface AIChatbotProps {
+  selectedContext?: Flight | null; // Optional flight data
+}
+
+export const AIChatbot = ({ selectedContext }: AIChatbotProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: "👋 **Welcome to SkyPort AI!**\n\nI'm your intelligent aviation assistant. Ask me about:\n- Flight status\n- Weather conditions\n- Airport amenities\n- Delay predictions\n\nHow can I help you today?",
+      content: "👋 **Captain Gemini here!**\n\nI see what you see. Ask me about:\n- The selected flight status\n- Aviation terms (e.g., \"What is Zulu time?\")\n\nReady for takeoff?",
       timestamp: new Date()
     }
   ]);
@@ -41,6 +47,16 @@ export const AIChatbot = () => {
     }
   }, [isOpen]);
 
+  // 3. Helper to format context for the AI
+  const getContextString = () => {
+    if (!selectedContext) return "User is looking at the main map. No specific flight selected.";
+    return `User has selected Flight ${selectedContext.flightNumber} (${selectedContext.airline}). 
+            Route: ${selectedContext.origin} to ${selectedContext.destination}. 
+            Status: ${selectedContext.status}. 
+            Altitude: ${selectedContext.altitude}ft. 
+            Speed: ${selectedContext.speed}knots.`;
+  };
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -55,41 +71,51 @@ export const AIChatbot = () => {
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response delay
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 700));
-    // Save user's query to Firestore if logged in, otherwise fallback to local storage
     try {
+      // 4. Send Context to Backend
+      const response = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          message: userMessage.content,
+          context: getContextString() // <--- Sending the magic context here
+        }),
+      });
+
+      const data = await response.json();
+      
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response || "I'm having trouble reaching the control tower.",
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
       const user = auth?.currentUser;
       if (user) {
         await addDoc(collection(db, 'users', user.uid, 'queries'), {
-          query: input,
+          query: userMessage.content,
+          response: assistantMessage.content,
           createdAt: serverTimestamp(),
         });
-      } else {
-        // fallback
-        const { saveQueryLocal } = await import('@/lib/storage');
-        saveQueryLocal(input);
       }
-    } catch (err) {
-      try {
-        const { saveQueryLocal } = await import('@/lib/storage');
-        saveQueryLocal(input);
-      } catch (e) {
-        console.warn('Failed to save query (both Firestore and local)', e);
-      }
+
+    } catch (error) {
+      console.error("Chat Error:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "⚠️ **Connection Error:** I can't reach the server. Is `main.py` running?",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
     }
-
-    const response = findResponse(input);
-    
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: response,
-      timestamp: new Date()
-    };
-
-    setIsTyping(false);
-    setMessages(prev => [...prev, assistantMessage]);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -107,7 +133,6 @@ export const AIChatbot = () => {
 
   return (
     <>
-      {/* Chat Toggle Button */}
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -125,7 +150,6 @@ export const AIChatbot = () => {
         </span>
       </motion.button>
 
-      {/* Chat Panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -135,14 +159,13 @@ export const AIChatbot = () => {
             transition={{ type: 'spring', damping: 25 }}
             className="fixed bottom-6 right-6 w-[90vw] sm:w-96 h-[70vh] max-h-[600px] glass-strong rounded-2xl border border-border/50 shadow-elevated z-50 flex flex-col overflow-hidden"
           >
-            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border/50 bg-gradient-to-r from-primary/10 to-accent/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-sky flex items-center justify-center">
                   <Bot className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">SkyPort AI</h3>
+                  <h3 className="font-semibold">Captain Gemini</h3>
                   <p className="text-xs text-success flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
                     Online
@@ -159,7 +182,6 @@ export const AIChatbot = () => {
               </Button>
             </div>
 
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
               {messages.map((message) => (
                 <motion.div
@@ -205,7 +227,6 @@ export const AIChatbot = () => {
                 </motion.div>
               ))}
 
-              {/* Typing indicator */}
               {isTyping && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -224,19 +245,19 @@ export const AIChatbot = () => {
                   </div>
                 </motion.div>
               )}
-
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick Actions */}
             <div className="px-4 py-2 flex gap-2 overflow-x-auto custom-scrollbar">
-              {['Weather DEL', 'AI101 status', 'Delay risk', 'Help'].map((action) => (
+              {/* Context Aware Quick Actions */}
+              {[
+                selectedContext ? `Status of ${selectedContext.flightNumber}?` : 'Is my flight delayed?',
+                'What is "Crosswind"?',
+                'Rights for delayed baggage?'
+              ].map((action) => (
                 <button
                   key={action}
-                  onClick={() => {
-                    setInput(action);
-                    setTimeout(handleSend, 100);
-                  }}
+                  onClick={() => setInput(action)}
                   className="flex-shrink-0 px-3 py-1 text-xs bg-muted/50 hover:bg-muted rounded-full border border-border/50 transition-colors"
                 >
                   {action}
@@ -244,7 +265,6 @@ export const AIChatbot = () => {
               ))}
             </div>
 
-            {/* Input */}
             <div className="p-4 border-t border-border/50">
               <div className="flex gap-2">
                 <Input
@@ -252,7 +272,7 @@ export const AIChatbot = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask me anything..."
+                  placeholder="Ask Captain Gemini..."
                   className="flex-1 bg-muted/50 border-border/50 focus:border-primary/50"
                   disabled={isTyping}
                 />

@@ -71,7 +71,7 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode 
     };
 
     fetchLiveFlights();
-    const interval = setInterval(fetchLiveFlights, 5000); // Poll every 5s
+    const interval = setInterval(fetchLiveFlights, 15000); // Poll every 5s
     return () => clearInterval(interval);
   }, []);
 
