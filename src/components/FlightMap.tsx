@@ -45,13 +45,14 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode 
         const response = await fetch('http://localhost:8000/api/flights/active');
         const data = await response.json();
         
-        // Transform Backend Data to Frontend 'Flight' Structure
+        // --- FIXED MAPPING LOGIC ---
+        // We now map the NEW backend keys (id, flightNumber) to the Frontend format
         const mappedFlights: Flight[] = data.flights.map((f: any) => ({
-          id: f.icao24,
-          flightNumber: f.callsign || 'N/A',
-          airline: f.callsign ? f.callsign.substring(0, 3) : "Unknown",
-          origin: "Unknown", 
-          destination: "Unknown",
+          id: f.id, // Fixed: Was 'f.icao24'
+          flightNumber: f.flightNumber || 'Unknown', // Fixed: Was 'f.callsign' -> This caused the N/A!
+          airline: f.airline || "Unknown", // Fixed: Backend now sends 'airline' directly
+          origin: f.origin || "Unknown", 
+          destination: f.destination || "Unknown",
           scheduledDeparture: "Now",
           scheduledArrival: "TBD",
           duration: "N/A",
@@ -59,9 +60,9 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode 
           price: 0,
           currentLat: f.lat,
           currentLng: f.lon,
-          altitude: f.altitude || 30000,
+          altitude: f.altitude || 0,
           heading: f.heading || 0,
-          speed: f.velocity ? Math.round(f.velocity * 3.6) : 800 // m/s to km/h
+          speed: f.speed || 0 // Fixed: Backend now sends 'speed' in knots
         }));
         
         setLiveFlights(mappedFlights);
@@ -71,7 +72,7 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode 
     };
 
     fetchLiveFlights();
-    const interval = setInterval(fetchLiveFlights, 15000); // Poll every 5s
+    const interval = setInterval(fetchLiveFlights, 15000); // Poll every 15s to match backend
     return () => clearInterval(interval);
   }, []);
 
@@ -169,7 +170,7 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode 
         <div style="padding:8px;background:#0f172a;color:white;border-radius:8px;font-family:system-ui;">
           <strong style="font-size:14px;">${flight.flightNumber}</strong>
           <p style="margin:4px 0 0;font-size:12px;">Alt: ${flight.altitude}ft</p>
-          <p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">Speed: ${flight.speed} km/h</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">Speed: ${flight.speed} kts</p>
         </div>
       `);
 
