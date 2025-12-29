@@ -10,6 +10,10 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
+import PlanTrip from "./pages/PlanTrip";
+import MyItinerary from "./pages/MyItinerary";
+import Settings from "./pages/Settings";
+import SearchHistory from "./pages/SearchHistory";
 import { AuthProvider } from "@/context/AuthContext";
 
 const queryClient = new QueryClient();
@@ -28,6 +32,10 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/plan-trip" element={<PlanTrip />} />
+            <Route path="/itinerary" element={<MyItinerary />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/search-history" element={<SearchHistory />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
