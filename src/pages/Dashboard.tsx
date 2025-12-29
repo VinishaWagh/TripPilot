@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Plane, MapPin, Calendar, Settings } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { LogOut, Plane, MapPin, Calendar, Settings, Search } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -38,9 +38,10 @@ export default function Dashboard() {
   };
 
   const quickActions = [
-    { icon: MapPin, label: 'Plan a Trip', color: 'bg-blue-500' },
-    { icon: Calendar, label: 'My Itineraries', color: 'bg-purple-500' },
-    { icon: Settings, label: 'Settings', color: 'bg-gray-500' },
+    { icon: MapPin, label: 'Plan a Trip', color: 'bg-blue-500', href: '/plan-trip' },
+    { icon: Calendar, label: 'My Itineraries', color: 'bg-purple-500', href: '/itinerary' },
+    { icon: Search, label: 'Search History', color: 'bg-orange-500', href: '/search-history' },
+    { icon: Settings, label: 'Settings', color: 'bg-gray-500', href: '/settings' },
   ];
 
   return (
@@ -128,26 +129,27 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-4"
           >
             {quickActions.map((action, index) => (
-              <motion.button
-                key={action.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 + index * 0.1 }}
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-card border border-border rounded-2xl p-6 text-left hover:shadow-lg transition-shadow"
-              >
-                <div className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center mb-4`}>
-                  <action.icon className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-foreground">{action.label}</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Click to get started
-                </p>
-              </motion.button>
+              <Link key={action.label} to={action.href}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 + index * 0.1 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-card border border-border rounded-2xl p-6 text-left hover:shadow-lg transition-shadow h-full"
+                >
+                  <div className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center mb-4`}>
+                    <action.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-foreground">{action.label}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Click to get started
+                  </p>
+                </motion.div>
+              </Link>
             ))}
           </motion.div>
 
