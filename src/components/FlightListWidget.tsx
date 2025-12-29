@@ -34,7 +34,6 @@ export const FlightListWidget = ({ onFlightSelect, selectedFlightId }: FlightLis
           <Plane className="w-4 h-4 text-primary" />
           Live Flights
         </h3>
-        <span className="text-xs text-muted-foreground">{inAirFlights.length} in air</span>
       </div>
 
       <div className="max-h-64 overflow-y-auto custom-scrollbar">

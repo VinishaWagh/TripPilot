@@ -11,6 +11,7 @@ interface FlightMapProps {
   selectedAirportCode: string | null;
   onAirportSelect?: (airport: Airport) => void;
   showFlights?: boolean;
+  showAirports?: boolean;
 }
 
 const getStatusColor = (status: string) => {
@@ -31,7 +32,7 @@ const getSeverityColor = (severity: string) => {
   }
 };
 
-export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode, onAirportSelect, showFlights = true }: FlightMapProps) {
+export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode, onAirportSelect, showFlights = true, showAirports = true }: FlightMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -174,8 +175,9 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode,
     // Use API airports if available, otherwise fallback to static airports
     const airportsToDisplay = apiAirports.length > 0 ? apiAirports : airports;
 
-    // Add Airport Markers - Make them more prominent when flights are hidden
-    airportsToDisplay.forEach((airport) => {
+    // Add Airport Markers - Only if showAirports is true
+    if (showAirports) {
+      airportsToDisplay.forEach((airport) => {
       const weather = getWeatherByAirport(airport.code);
       const severity = weather?.severity || 'green';
       const borderColor = getSeverityColor(severity);
@@ -214,7 +216,8 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode,
         .setPopup(popup)
         .addTo(map.current!);
       airportMarkersRef.current.push(marker);
-    });
+      });
+    }
 
     // Add LIVE Flight Markers (only if showFlights is true)
     if (showFlights) {
@@ -251,7 +254,7 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode,
       markersRef.current.push(marker);
       });
     }
-  }, [liveFlights, onFlightSelect, onAirportSelect, showFlights, selectedAirportCode, apiAirports]); 
+  }, [liveFlights, onFlightSelect, onAirportSelect, showFlights, showAirports, selectedAirportCode, apiAirports]); 
 
   return <div ref={mapContainer} className="w-full h-full" />;
 }
