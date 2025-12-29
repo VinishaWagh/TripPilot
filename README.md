@@ -9,6 +9,7 @@
 - Monitor flight progress and location in real time, including arrivals, departures, and delay updates.
 - Provides AI powered Active Assistance.
 - Offers step-by-step recommendations for rebooking, compensation, and support.
+- AI-powered itinerary planner that creates personalized travel plans based on traveler preferences and trip type.
 - Personalized notifications delivered at the right time based on the passenger’s flight details, routes, and travel schedule.
 - Display information geographically using interactive maps.
 - Two-way communication via an AI chatbot.
