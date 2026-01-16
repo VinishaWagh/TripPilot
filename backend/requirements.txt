@@ -3,5 +3,5 @@ uvicorn
 python-dotenv
 requests
 google-generativeai
-FlightRadar24API
+FlightRadarAPI
 beautifulsoup4
