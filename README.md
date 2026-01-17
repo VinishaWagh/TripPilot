@@ -2,7 +2,7 @@
 
 ## This project is an AI-powered flight tracking and travel assistance platform that integrates real-time flight updates with interactive maps, essential travel information, and AI chatbot–driven personalization.
 
-**URL**: to be updated
+**URL**: [Visit my website](https://trip-pilot-two.vercel.app/flights)
 
 ## Features
 - Display live flights on interactive maps showing source and destination locations along with real-time flight status.
@@ -24,9 +24,7 @@
 - React
 - Vite
 - Tailwind CSS
-- MapLibre GL / Leaflet (interactive maps)
-- React Router
-- TanStack React Query
+- MapLibre GL / Leaflet 
 - Firebase
 - Framer Motion
 
@@ -36,17 +34,25 @@
 
 ### Backend
 - Python 3.9+
-- pip
-- virtual environment (recommended)
 
 **Key technologies & libraries**
 - FastAPI
 - Uvicorn
 - Pydantic
 - Requests
-- Google Generative AI (Gemini)
 
 > Full backend dependency list is available in `requirements.txt`.
+## 🔌 APIs Used
+
+- ✈️ **Flight Tracking API**  
+  https://www.flightradar24.com/how-it-works
+
+- 🤖 **Google Generative AI API**  
+  https://ai.google.dev/
+
+- 📍 **Google Places API**  
+  https://developers.google.com/maps/documentation/places
+
 
 ---
 
