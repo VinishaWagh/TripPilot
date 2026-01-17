@@ -2,50 +2,86 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin } from 'lucide-react';
 import { Airport } from '@/data/airports';
+import { Weather } from '@/data/weather';
 import { getWeatherByAirport } from '@/data/weather';
 import { cn } from '@/lib/utils';
+import allAirportsData from '@/data/airports.json';
+import { fetchAirportWeather } from '@/lib/weatherService';
 
 interface AirportListWidgetProps {
   onAirportSelect: (airport: Airport) => void;
   selectedAirportCode: string | null;
 }
 
+// Filter and convert Indian airports from JSON
+const getIndianAirports = (): Airport[] => {
+  return (allAirportsData as any[])
+    .filter(airport => airport.country === 'India')
+    .map(airport => ({
+      code: airport.code,
+      name: airport.name,
+      city: airport.city,
+      lat: parseFloat(airport.lat),
+      lng: parseFloat(airport.lon),
+      terminal: 1,
+      amenities: { restaurants: 0, lounges: 0, shops: 0, services: 0 }
+    }))
+    .sort((a, b) => a.city.localeCompare(b.city));
+};
+
 export const AirportListWidget = ({ onAirportSelect, selectedAirportCode }: AirportListWidgetProps) => {
   const [airports, setAirports] = useState<Airport[]>([]);
+  const [weatherMap, setWeatherMap] = useState<Record<string, Weather | null>>({});
   const [loading, setLoading] = useState(true);
+  const [currentAirportIndex, setCurrentAirportIndex] = useState(0);
 
+  // Initial load - get airports
   useEffect(() => {
-    const fetchAirports = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/api/airports');
-        const data = await response.json();
-        
-        if (data.airports && data.airports.length > 0) {
-          const transformedAirports: Airport[] = data.airports.map((ap: any) => ({
-            code: ap.code || '',
-            name: ap.name || 'Unknown Airport',
-            city: ap.city || 'Unknown City',
-            lat: ap.lat || 0,
-            lng: ap.lng || 0,
-            terminal: ap.terminal || 1,
-            amenities: {
-              restaurants: ap.amenities?.restaurants || 0,
-              lounges: ap.amenities?.lounges || 0,
-              shops: ap.amenities?.shops || 0,
-              services: ap.amenities?.services || 0
-            }
-          }));
-          setAirports(transformedAirports);
-        }
-      } catch (error) {
-        console.error("Failed to fetch airports:", error);
-      } finally {
-        setLoading(false);
+    const indianAirports = getIndianAirports();
+    setAirports(indianAirports);
+    console.log(`Loaded ${indianAirports.length} Indian airports`);
+    setLoading(false);
+  }, []);
+
+  // Fetch weather data in batches - 1 airport per minute to avoid rate limit
+  useEffect(() => {
+    if (airports.length === 0) return;
+
+    const fetchNextAirportWeather = async () => {
+      const airport = airports[currentAirportIndex];
+      if (!airport) return;
+
+      console.log(`[${currentAirportIndex + 1}/${airports.length}] Fetching weather for ${airport.code}...`);
+      const weather = await fetchAirportWeather(airport.code, airport.city, {
+        lat: airport.lat,
+        lng: airport.lng
+      });
+      
+      const weatherData = weather || getWeatherByAirport(airport.code) || null;
+      console.log(`Weather for ${airport.code}:`, weatherData);
+      
+      setWeatherMap(prev => ({
+        ...prev,
+        [airport.code]: weatherData
+      }));
+
+      // Move to next airport
+      if (currentAirportIndex < airports.length - 1) {
+        setCurrentAirportIndex(prev => prev + 1);
+      } else {
+        // Reset to start fetching updates again after 1 minute
+        console.log('Completed weather fetch cycle. Will refresh in 1 minute...');
+        setTimeout(() => setCurrentAirportIndex(0), 60000);
       }
     };
 
-    fetchAirports();
-  }, []);
+    // Fetch weather for current airport
+    fetchNextAirportWeather();
+
+    // Set interval to fetch next airport every 30 seconds
+    const interval = setInterval(fetchNextAirportWeather, 30000);
+    return () => clearInterval(interval);
+  }, [airports, currentAirportIndex]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -98,7 +134,7 @@ export const AirportListWidget = ({ onAirportSelect, selectedAirportCode }: Airp
           </div>
         ) : (
           airports.map((airport, index) => {
-            const weather = getWeatherByAirport(airport.code);
+            const weather = weatherMap[airport.code];
             const severity = weather?.severity || 'green';
             
             return (

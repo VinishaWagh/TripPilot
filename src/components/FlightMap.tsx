@@ -5,6 +5,7 @@ import { Flight } from '@/data/flights';
 import { airports, Airport } from '@/data/airports';
 import { getWeatherByAirport } from '@/data/weather';
 import API_URL from '@/config';
+import allAirportsData from '@/data/airports.json';
 
 interface FlightMapProps {
   selectedFlight: Flight | null;
@@ -13,6 +14,7 @@ interface FlightMapProps {
   onAirportSelect?: (airport: Airport) => void;
   showFlights?: boolean;
   showAirports?: boolean;
+  zoomToAirportCode?: string | null;
 }
 
 const getStatusColor = (status: string) => {
@@ -33,38 +35,36 @@ const getSeverityColor = (severity: string) => {
   }
 };
 
-export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode, onAirportSelect, showFlights = true, showAirports = true }: FlightMapProps) {
+// Filter and convert Indian airports from JSON
+const getIndianAirports = (): Airport[] => {
+  return (allAirportsData as any[])
+    .filter(airport => airport.country === 'India')
+    .map(airport => ({
+      code: airport.code,
+      name: airport.name,
+      city: airport.city,
+      lat: parseFloat(airport.lat),
+      lng: parseFloat(airport.lon),
+      terminal: 1,
+      amenities: { restaurants: 0, lounges: 0, shops: 0, services: 0 }
+    }));
+};
+
+export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode, onAirportSelect, showFlights = true, showAirports = true, zoomToAirportCode }: FlightMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const airportMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const airportsRef = useRef<Airport[]>([]);
 
   const [liveFlights, setLiveFlights] = useState<Flight[]>([]);
   const [apiAirports, setApiAirports] = useState<Airport[]>([]);
 
-  // 1. Fetch Airports (Teammate's Feature)
+  // 1. Load Indian Airports from JSON
   useEffect(() => {
-    const fetchAirports = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/airports`);
-        const data = await response.json();
-        if (data.airports && data.airports.length > 0) {
-          setApiAirports(data.airports.map((ap: any) => ({
-            code: ap.code || '',
-            name: ap.name || 'Unknown Airport',
-            city: ap.city || 'Unknown City',
-            lat: ap.lat || 0,
-            lng: ap.lng || 0,
-            terminal: 1,
-            amenities: { restaurants: 0, lounges: 0, shops: 0, services: 0 }
-          })));
-        }
-      } catch (error) {
-        console.error("Failed to fetch airports:", error);
-        setApiAirports([]);
-      }
-    };
-    fetchAirports();
+    const indianAirports = getIndianAirports();
+    setApiAirports(indianAirports);
+    airportsRef.current = indianAirports;
   }, []);
 
   // 2. Fetch Live Flights (Your Feature)
@@ -145,6 +145,21 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode,
     };
   }, []);
 
+  // Handle zoom to airport
+  useEffect(() => {
+    if (!zoomToAirportCode || !map.current || airportsRef.current.length === 0) return;
+    
+    const airport = airportsRef.current.find(a => a.code === zoomToAirportCode);
+    if (airport) {
+      console.log('Zooming to airport:', airport.code, airport.lat, airport.lng);
+      map.current.easeTo({
+        center: [airport.lng, airport.lat],
+        zoom: 12,
+        duration: 1500
+      });
+    }
+  }, [zoomToAirportCode]);
+
   // 4. Map Markers
   useEffect(() => {
     if (!map.current) return;
@@ -218,7 +233,7 @@ export function FlightMap({ selectedFlight, onFlightSelect, selectedAirportCode,
         markersRef.current.push(marker);
       });
     }
-  }, [liveFlights, onFlightSelect, onAirportSelect, showFlights, showAirports, selectedAirportCode, apiAirports]); 
+  }, [liveFlights, onFlightSelect, onAirportSelect, showFlights, showAirports, selectedAirportCode]); 
 
   return <div ref={mapContainer} className="w-full h-full" />;
 }

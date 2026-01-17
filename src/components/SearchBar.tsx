@@ -6,11 +6,28 @@ import { Flight } from '@/data/flights';
 import { Airport } from '@/data/airports';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+import allAirportsData from '@/data/airports.json';
 
 interface SearchBarProps {
   onFlightSelect: (flight: Flight) => void;
   onAirportSelect: (airport: Airport) => void;
 }
+
+// Filter and convert Indian airports from JSON
+const getIndianAirports = (): Airport[] => {
+  return (allAirportsData as any[])
+    .filter(airport => airport.country === 'India')
+    .map(airport => ({
+      code: airport.code,
+      name: airport.name,
+      city: airport.city,
+      lat: parseFloat(airport.lat),
+      lng: parseFloat(airport.lon),
+      terminal: 1,
+      amenities: { restaurants: 0, lounges: 0, shops: 0, services: 0 }
+    }))
+    .sort((a, b) => a.city.localeCompare(b.city));
+};
 
 export const SearchBar = ({ onFlightSelect, onAirportSelect }: SearchBarProps) => {
   const [query, setQuery] = useState('');
@@ -23,35 +40,10 @@ export const SearchBar = ({ onFlightSelect, onAirportSelect }: SearchBarProps) =
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch airports from API
+  // Load Indian airports from JSON on mount
   useEffect(() => {
-    const fetchAirports = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/api/airports');
-        const data = await response.json();
-        if (data.airports && data.airports.length > 0) {
-          const transformedAirports: Airport[] = data.airports.map((ap: any) => ({
-            code: ap.code || '',
-            name: ap.name || 'Unknown Airport',
-            city: ap.city || 'Unknown City',
-            lat: ap.lat || 0,
-            lng: ap.lng || 0,
-            terminal: 1,
-            amenities: {
-              restaurants: 0,
-              lounges: 0,
-              shops: 0,
-              services: 0
-            }
-          }));
-          setApiAirports(transformedAirports);
-        }
-      } catch (error) {
-        console.error("Failed to fetch airports:", error);
-      }
-    };
-
-    fetchAirports();
+    const indianAirports = getIndianAirports();
+    setApiAirports(indianAirports);
   }, []);
 
   useEffect(() => {

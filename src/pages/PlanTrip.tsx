@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Airport } from '@/data/airports';
+import allAirportsData from '@/data/airports.json';
 
 const popularDestinations = [
   { code: 'GOI', name: 'Goa', image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400', price: '₹4,500' },
@@ -25,6 +26,22 @@ const popularDestinations = [
   { code: 'BLR', name: 'Bangalore', image: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=400', price: '₹3,800' },
   { code: 'CCU', name: 'Kolkata', image: 'https://images.unsplash.com/photo-1558431382-27e303142255?w=400', price: '₹4,100' },
 ];
+
+// Filter and convert Indian airports from JSON
+const getIndianAirports = (): Airport[] => {
+  return (allAirportsData as any[])
+    .filter(airport => airport.country === 'India')
+    .map(airport => ({
+      code: airport.code,
+      name: airport.name,
+      city: airport.city,
+      lat: parseFloat(airport.lat),
+      lng: parseFloat(airport.lon),
+      terminal: 1,
+      amenities: { restaurants: 0, lounges: 0, shops: 0, services: 0 }
+    }))
+    .sort((a, b) => a.city.localeCompare(b.city));
+};
 
 export default function PlanTrip() {
   const navigate = useNavigate();
@@ -40,19 +57,23 @@ export default function PlanTrip() {
   });
 
   useEffect(() => {
-    const fetchAirports = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/api/airports');
-        const data = await response.json();
-        if (data.airports) {
-          setAirports(data.airports);
-        }
-      } catch (error) {
-        console.error('Failed to fetch airports:', error);
-      }
-    };
-
-    fetchAirports();
+    // Load Indian airports from JSON
+    const indianAirports = getIndianAirports();
+    setAirports(indianAirports);
+    
+    // Set default origin and destination
+    if (indianAirports.length >= 2) {
+      setTripData(prev => ({
+        ...prev,
+        from: indianAirports[0].code,
+        to: indianAirports[1].code,
+      }));
+    } else if (indianAirports.length === 1) {
+      setTripData(prev => ({
+        ...prev,
+        from: indianAirports[0].code,
+      }));
+    }
   }, []);
 
   const handleSearch = () => {
@@ -162,10 +183,10 @@ export default function PlanTrip() {
                     <SelectTrigger>
                       <SelectValue placeholder="Select origin" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px] overflow-y-auto">
                       {airports.map(airport => (
                         <SelectItem key={airport.code} value={airport.code}>
-                          {airport.city} ({airport.code})
+                          {airport.city}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -184,10 +205,10 @@ export default function PlanTrip() {
                     <SelectTrigger>
                       <SelectValue placeholder="Select destination" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px] overflow-y-auto">
                       {airports.map(airport => (
                         <SelectItem key={airport.code} value={airport.code}>
-                          {airport.city} ({airport.code})
+                          {airport.city}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -10,11 +10,13 @@ import { AirportAmenitiesPanel } from '@/components/AirportAmenitiesPanel';
 import { Airport } from '@/data/airports';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Home, Map, List, Settings, MapPin } from 'lucide-react';
+import allAirportsData from '@/data/airports.json';
 
 const AirportPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWeatherAlertsOpen, setIsWeatherAlertsOpen] = useState(false);
   const [selectedAirportCode, setSelectedAirportCode] = useState<string | null>(null);
+  const [zoomToCode, setZoomToCode] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,6 +35,7 @@ const AirportPage = () => {
   const handleAirportSelect = (airport: Airport) => {
     console.log('Airport selected in AirportPage:', airport);
     setSelectedAirportCode(airport.code);
+    setZoomToCode(airport.code);
   };
 
   const formatTime = (date: Date) => {
@@ -48,25 +51,10 @@ const AirportPage = () => {
   const [airportsCount, setAirportsCount] = useState<number>(0);
 
   useEffect(() => {
-    let mounted = true;
-
-    const fetchAirportsCount = async () => {
-      try {
-        const res = await fetch('http://localhost:8000/api/airports');
-        if (!res.ok) throw new Error('Network response not ok');
-        const data = await res.json();
-        const airports = data.airports || [];
-        if (mounted) setAirportsCount(airports.length);
-      } catch (err) {
-        console.error('Failed to fetch airports count:', err);
-        if (mounted) setAirportsCount(0);
-      }
-    };
-
-    fetchAirportsCount();
-    // Refresh every 5 minutes
-    const id = setInterval(fetchAirportsCount, 300000);
-    return () => { mounted = false; clearInterval(id); };
+    // Get actual count of Indian airports from JSON
+    const indianAirportsCount = (allAirportsData as any[])
+      .filter(airport => airport.country === 'India').length;
+    setAirportsCount(indianAirportsCount);
   }, []);
 
   return (
@@ -86,6 +74,7 @@ const AirportPage = () => {
           onAirportSelect={handleAirportSelect}
           showFlights={false}
           showAirports={true}
+          zoomToAirportCode={zoomToCode}
         />
       </div>
 
