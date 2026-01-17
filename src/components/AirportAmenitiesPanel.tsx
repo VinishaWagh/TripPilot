@@ -91,6 +91,17 @@ export const AirportAmenitiesPanel = ({ airportCode, onClose }: AirportAmenities
   const [airport, setAirport] = useState<Airport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Get existing amenities or generate mock ones if none exist
+  const existingAmenities = getAmenitiesByAirport(airportCode || '');
+  const amenities = useMemo(() => {
+    if (!airport) return [];
+    if (existingAmenities.length > 0) {
+      return existingAmenities;
+    }
+    // Generate mock amenities for airports without data
+    return generateMockAmenities(airportCode || '', airport.city);
+  }, [airportCode, airport?.city, existingAmenities, airport]);
+
   useEffect(() => {
     if (!airportCode) {
       setAirport(null);
@@ -193,17 +204,6 @@ export const AirportAmenitiesPanel = ({ airportCode, onClose }: AirportAmenities
   }, [airportCode]);
 
   if (!airportCode) return null;
-
-  // Get existing amenities or generate mock ones if none exist
-  const existingAmenities = getAmenitiesByAirport(airportCode);
-  const amenities = useMemo(() => {
-    if (!airport) return [];
-    if (existingAmenities.length > 0) {
-      return existingAmenities;
-    }
-    // Generate mock amenities for airports without data
-    return generateMockAmenities(airportCode, airport.city);
-  }, [airportCode, airport?.city, existingAmenities, airport]);
 
   const getTypeIcon = (type: Amenity['type']) => {
     switch (type) {

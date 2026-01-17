@@ -145,6 +145,7 @@ const Index = () => {
           onFlightSelect={handleFlightSelect}
           selectedAirportCode={selectedAirportCode}
           onAirportSelect={handleAirportSelect}
+          showAirports={false}
         />
       </div>
 
